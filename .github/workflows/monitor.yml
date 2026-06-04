@@ -3,8 +3,6 @@ name: Monitor Yosei Ranbu
 on:
   workflow_dispatch:
 
-  push:
-
   schedule:
     - cron: '*/15 * * * *'
 
