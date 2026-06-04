@@ -1,4 +1,4 @@
-import hashlib
+import json
 import os
 import requests
 
@@ -8,11 +8,11 @@ URL = "https://yan-flash.com/ultimate/yosei-ranbu"
 
 WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]
 
-HASH_FILE = "last_hash.txt"
+SAVE_FILE = "last_updates.json"
 
 
 def send_discord(message):
-    requests.post(
+    response = requests.post(
         WEBHOOK_URL,
         json={
             "content": message
@@ -20,25 +20,47 @@ def send_discord(message):
         timeout=30
     )
 
-
-def load_hash():
-    if not os.path.exists(HASH_FILE):
-        return ""
-
-    with open(HASH_FILE, "r", encoding="utf-8") as f:
-        return f.read().strip()
+    response.raise_for_status()
 
 
-def save_hash(value):
-    with open(HASH_FILE, "w", encoding="utf-8") as f:
-        f.write(value)
+def load_updates():
+    try:
+        with open(
+            SAVE_FILE,
+            "r",
+            encoding="utf-8"
+        ) as f:
+            return json.load(f)
+
+    except FileNotFoundError:
+        return []
 
 
-def main():
+def save_updates(data):
+    with open(
+        SAVE_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+
+def get_current_updates():
 
     response = requests.get(
         URL,
-        timeout=30
+        timeout=30,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 "
+                "(Windows NT 10.0; Win64; x64)"
+            )
+        }
     )
 
     response.raise_for_status()
@@ -52,51 +74,116 @@ def main():
         "#ult-changelog"
     )
 
-    print(section.prettify())
-
     if section is None:
         raise Exception(
-            "ult-changelogが見つかりません"
+            "ult-changelog が見つかりません"
         )
 
-    content = section.get_text(
-        separator="\n",
-        strip=True
+    items = []
+
+    for li in section.select("li"):
+
+        time_tag = li.find("time")
+        p_tag = li.find("p")
+
+        if not time_tag or not p_tag:
+            continue
+
+        items.append({
+            "time": time_tag.get_text(
+                strip=True
+            ),
+            "text": p_tag.get_text(
+                strip=True
+            )
+        })
+
+    return items
+
+
+def create_message(new_items):
+
+    lines = []
+
+    for item in reversed(new_items):
+
+        lines.append(
+            f"🕒 {item['time']}"
+        )
+
+        lines.append(
+            item["text"]
+        )
+
+        lines.append("")
+
+    body = "\n".join(lines)
+
+    return (
+        "🚨 妖精乱舞 更新検知\n\n"
+        f"{body}\n"
+        f"{URL}"
     )
 
-    current_hash = hashlib.sha256(
-        content.encode("utf-8")
-    ).hexdigest()
 
-    old_hash = load_hash()
+def main():
 
-    if old_hash == "":
-        save_hash(current_hash)
-        print("初回実行")
+    current_items = get_current_updates()
+
+    old_items = load_updates()
+
+    old_set = {
+        (
+            item["time"],
+            item["text"]
+        )
+        for item in old_items
+    }
+
+    new_items = [
+        item
+        for item in current_items
+        if (
+            item["time"],
+            item["text"]
+        ) not in old_set
+    ]
+
+    if not old_items:
+
+        save_updates(
+            current_items
+        )
+
+        print(
+            "初回実行のため保存のみ"
+        )
+
         return
 
-    if current_hash != old_hash:
+    if new_items:
 
-        send_discord(
-            "🚨 妖精乱舞の更新履歴が更新されました！\n"
-            f"{URL}"
+        message = create_message(
+            new_items
         )
 
-        save_hash(current_hash)
+        send_discord(
+            message
+        )
 
-        print("更新検知")
+        print(
+            f"{len(new_items)}件の更新を通知"
+        )
 
     else:
-        print("変更なし")
-    
-    """
-    # Test Code
-    send_discord(
-    "🧪 GitHub Actions テスト通知"
-    )
 
-    save_hash(current_hash)
-    """
+        print(
+            "更新なし"
+        )
+
+    save_updates(
+        current_items
+    )
 
 
 if __name__ == "__main__":
