@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import json
 import os
 import requests
@@ -128,6 +130,10 @@ def create_message(new_items):
 
 def main():
 
+    print(
+        f"Monitor started: {datetime.now()}"
+    )
+    
     current_items = get_current_updates()
 
     old_items = load_updates()
