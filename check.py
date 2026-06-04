@@ -52,6 +52,8 @@ def main():
         "#ult-changelog"
     )
 
+    print(section.prettify())
+
     if section is None:
         raise Exception(
             "ult-changelogが見つかりません"
