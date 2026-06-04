@@ -73,6 +73,7 @@ def main():
         print("初回実行")
         return
 
+    /*
     if current_hash != old_hash:
 
         send_discord(
@@ -86,6 +87,12 @@ def main():
 
     else:
         print("変更なし")
+    */
+    send_discord(
+    "🧪 GitHub Actions テスト通知"
+    )
+
+    save_hash(current_hash)
 
 
 if __name__ == "__main__":
