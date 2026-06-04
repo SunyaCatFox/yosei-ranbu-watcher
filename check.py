@@ -1,4 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+# タイムゾーンの生成
+JST = timezone(timedelta(hours=+9), 'JST')
 
 import json
 import os
@@ -131,7 +134,7 @@ def create_message(new_items):
 def main():
 
     print(
-        f"Monitor started: {datetime.now()}"
+        f"Monitor started: {datetime.now(JST)}"
     )
     
     current_items = get_current_updates()
